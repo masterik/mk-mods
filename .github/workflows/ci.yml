@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Each theme: the engine's own validator and test runner, no auth needed. The CLI is the latest
+  # from npm: the mod API is early access, so an update can fail here before it fails a user.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: |
+          for d in */.claude-plugin/plugin.json; do
+            t=${d%%/*}
+            claude plugin validate "$t"
+            claude plugin test "$t"
+          done
