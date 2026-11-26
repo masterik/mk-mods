@@ -2,7 +2,7 @@
 
 **mkit-themes** — Claude Code theme mods, one plugin per top-level folder (`catppuccin/`). Listed in
 `masterik/mk-toolkit`'s `.claude-plugin/marketplace.json` as `git-subdir` sources
-(`url: masterik/mkit-themes`, `path: <theme>`); no marketplace file here. Claude Code only.
+(`url: https://github.com/masterik/mkit-themes.git`, `path: <theme>`; HTTPS, since the `owner/repo` shorthand clones over SSH); no marketplace file here. Claude Code only.
 
 ## Rules
 
