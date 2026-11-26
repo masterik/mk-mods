@@ -4,6 +4,6 @@
 check:
 	for d in */.claude-plugin/plugin.json; do t=${d%%/*}; claude plugin validate "$t" && claude plugin test "$t" || exit 1; done
 
-# bump, commit, tag and push one theme's release after a confirmation
-release THEME BUMP="auto":
-	tools/release.sh {{THEME}} {{BUMP}}
+# bump every theme to one version, commit, tag vX.Y.Z and push after a confirmation — auto (default), patch|minor|major or X.Y.Z
+release BUMP="auto":
+	tools/release.sh {{BUMP}}

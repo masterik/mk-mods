@@ -19,14 +19,16 @@
 
 ```bash
 just check                       # validate + test every theme (what CI runs)
-just release catppuccin [bump]   # per-theme version + tag <theme>-vX.Y.Z, asks before pushing
+just release [bump]              # one version for every theme + tag vX.Y.Z, asks before pushing
 claude --plugin-dir ./catppuccin # load one live
 ```
 
 ## Release
 
-Per theme, independent: `tools/release.sh <theme> [auto|patch|minor|major|X.Y.Z]`. auto reads
-Conventional Commits touching `<theme>/` since its last tag (`feat` → minor, breaking → major, minor
-pre-1.0, else patch). Tag `<theme>-vX.Y.Z` → `release.yml` makes the GitHub Release (notes from commits
-since the theme's previous tag). Users get `main`; the version bump is what triggers their update.
-New theme: add the folder, then its entry in mk-toolkit's marketplace.
+One version per repo, independent of mkit's: `tools/release.sh [auto|patch|minor|major|X.Y.Z]` bumps
+every `*/.claude-plugin/plugin.json` to it. auto reads Conventional Commits since the last tag (`feat` →
+minor, breaking → major, minor pre-1.0, else patch); first release = the highest manifest version.
+Tag `vX.Y.Z` → `release.yml` makes the GitHub Release (notes from commits since the previous tag).
+Users get `main`; the version bump is what triggers their update. A release bumps every theme, changed
+or not. New theme: add the folder (its `plugin.json` at any version ≤ the current one), then its entry in
+mk-toolkit's marketplace.

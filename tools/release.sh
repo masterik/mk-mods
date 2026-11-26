@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Release one theme: bump <theme>/.claude-plugin/plugin.json, commit `chore(release): <theme> X.Y.Z`,
-# tag <theme>-vX.Y.Z, push both. The tag makes the GitHub Release (release.yml).
+# Cut a release of the repo: bump every theme's plugin.json to one version, commit
+# `chore(release): X.Y.Z`, tag vX.Y.Z, push both. The tag makes the GitHub Release (release.yml).
 #
-#   tools/release.sh <theme> [auto|patch|minor|major|X.Y.Z]    (default: auto)
+#   tools/release.sh [auto|patch|minor|major|X.Y.Z]    (default: auto)
 #
-# auto reads the Conventional Commits touching <theme>/ since its last tag: a breaking change is
-# major (minor while pre-1.0), any feat is minor, anything else is patch. The first release of a
-# theme is the version its plugin.json carries. Human-run: asks before it pushes.
+# auto reads the Conventional Commits since the last tag: a breaking change is major (minor while
+# pre-1.0), any feat is minor, anything else is patch. The first release is the highest version a
+# theme's plugin.json carries. Human-run: asks before it pushes.
 set -euo pipefail
 
 die() { echo "release: $*" >&2; exit 1; }
@@ -18,12 +18,13 @@ below() {
   ((a1 < b1 || (a1 == b1 && (a2 < b2 || (a2 == b2 && a3 < b3)))))
 }
 
-theme=${1:-}
-bump=${2:-auto}
+bump=${1:-auto}
 cd "$(git rev-parse --show-toplevel)"
-[[ -n $theme ]] || die "usage: tools/release.sh <theme> [auto|patch|minor|major|X.Y.Z]"
-manifest=$theme/.claude-plugin/plugin.json
-[[ -f $manifest ]] || die "$manifest is missing; themes: $(ls -d */.claude-plugin 2>/dev/null | cut -d/ -f1 | tr '\n' ' ')"
+manifests=()
+for f in */.claude-plugin/plugin.json; do
+  if [[ -f $f ]]; then manifests+=("$f"); fi
+done
+((${#manifests[@]} > 0)) || die "no */.claude-plugin/plugin.json found"
 [[ -t 0 ]] || die "needs a terminal to confirm on"
 [[ $(git branch --show-current) == main ]] || die "release from main only"
 dirty=$(git status --porcelain --untracked-files=no)
@@ -31,26 +32,30 @@ dirty=$(git status --porcelain --untracked-files=no)
 git fetch -q --tags origin main
 [[ -z $(git rev-list HEAD..origin/main) ]] || die "main is behind origin/main; pull first"
 
-current=$(sed -nE 's/^  "version": "([^"]+)",$/\1/p' "$manifest")
-[[ $current =~ $semver ]] || die "cannot read the version in $manifest"
-last=$(git describe --tags --match "$theme-v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 2>/dev/null || true)
+# the highest version any manifest carries: never release below it
+highest=0.0.0
+for manifest in "${manifests[@]}"; do
+  v=$(sed -nE 's/^  "version": "([^"]+)",$/\1/p' "$manifest")
+  [[ $v =~ $semver ]] || die "cannot read the version in $manifest"
+  ! below "$highest" "$v" || highest=$v
+done
 
+last=$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>/dev/null || true)
 if [[ -z $last ]]; then
-  # first release: the version the manifest already carries, unless one was named
-  [[ $bump == auto ]] && bump=$current
+  [[ $bump == auto ]] && bump=$highest
   range=HEAD
-  base=$current
+  base=$highest
 else
-  base=${last#"$theme-v"}
-  [[ $base =~ $semver ]] || die "last tag $last is not $theme-vX.Y.Z"
+  base=${last#v}
+  [[ $base =~ $semver ]] || die "last tag $last is not vX.Y.Z"
   range=$last..HEAD
-  [[ -n $(git rev-list "$range" -- "$theme/") ]] || die "no commits under $theme/ since $last"
+  [[ -n $(git rev-list "$range") ]] || die "no commits since $last"
 fi
 IFS=. read -r major minor patch <<<"$base"
 
-subjects=$(git log "$range" --no-merges --format='%s' -- "$theme/")
+subjects=$(git log "$range" --no-merges --format='%s')
 if [[ $bump == auto ]]; then
-  messages=$(git log "$range" --no-merges --format='%s%n%b' -- "$theme/")
+  messages=$(git log "$range" --no-merges --format='%s%n%b')
   if grep -qE '^[a-z]+(\([^)]*\))?!:|^BREAKING[ -]CHANGE:' <<<"$messages"; then
     bump=major
   elif grep -qE '^feat(\([^)]*\))?:' <<<"$subjects"; then
@@ -71,20 +76,21 @@ case $bump in
     version=$bump
     ;;
 esac
-tag=$theme-v$version
-! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || die "tag $tag exists"
-! below "$version" "$current" || die "$version is below $manifest's $current; run: just release $theme $current"
+! git rev-parse -q --verify "refs/tags/v$version" >/dev/null || die "tag v$version exists"
+! below "$version" "$highest" || die "v$version is below a theme's $highest; run: just release $highest"
 
-echo "${last:-(first release)} → $tag"
+echo "${last:-(first release)} → v$version (${#manifests[@]} theme(s): ${manifests[*]%%/*})"
 sed 's/^/  /' <<<"$subjects"
-read -r -p "release $tag and push to origin? [y/N] " answer
+read -r -p "release v$version and push to origin? [y/N] " answer
 [[ $answer == [yY] ]] || die "aborted; nothing changed"
 
-tmp=$manifest.tmp
-sed -E "s/^(  \"version\": \")[^\"]+(\",)$/\1$version\2/" "$manifest" >"$tmp" && mv "$tmp" "$manifest"
-grep -q "\"version\": \"$version\"" "$manifest" || die "could not bump $manifest"
-git add "$manifest"
-git commit -q --allow-empty -m "chore(release): $theme $version"
-git tag -a "$tag" -m "$tag"
-git push --atomic origin main "$tag"
-echo "released $tag — https://github.com/masterik/mkit-themes/releases/tag/$tag"
+for manifest in "${manifests[@]}"; do
+  sed -E "s/^(  \"version\": \")[^\"]+(\",)$/\1$version\2/" "$manifest" >"$manifest.tmp" && mv "$manifest.tmp" "$manifest"
+  grep -q "\"version\": \"$version\"" "$manifest" || die "could not bump $manifest"
+done
+git add "${manifests[@]}"
+# --allow-empty: releasing the version the manifests already carry changes no file
+git commit -q --allow-empty -m "chore(release): $version"
+git tag -a "v$version" -m "v$version"
+git push --atomic origin main "v$version"
+echo "released v$version — https://github.com/masterik/mkit-themes/releases/tag/v$version"
