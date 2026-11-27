@@ -1,4 +1,4 @@
-import type { Register, ThemeSetArgs } from 'claude-code'
+import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
 
 import { makeColors } from './make-colors.js'
 
@@ -89,23 +89,36 @@ export function buildLook(): { look: ThemeSetArgs; problems: string[] } {
   return { look: { colors: theme, backdrop: { color: 'surface-1' } }, problems }
 }
 
+async function apply($: EngineInterface): Promise<void> {
+  const { look, problems } = buildLook()
+  const unpainted = problems.find(line => line.startsWith("Desktop won't paint"))
+  if (unpainted !== undefined) {
+    $.ui.toast(unpainted)
+  }
+  let set
+  try {
+    set = await $.theme.set(look)
+  } catch (error) {
+    // A build that takes no backdrop: the colors alone.
+    $.ui.log(String(error))
+    set = await $.theme.set({ colors: look.colors })
+  }
+  // Clears a reason left from an earlier set once the theme draws.
+  $.ui.status(set.isDrawn ? undefined : set.reason)
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    const { look, problems } = buildLook()
-    const unpainted = problems.find(line => line.startsWith("Desktop won't paint"))
-    if (unpainted !== undefined) {
-      $.ui.toast(unpainted)
-    }
-    let set
-    try {
-      set = await $.theme.set(look)
-    } catch (error) {
-      // A build that takes no backdrop: the colors alone.
-      $.ui.log(String(error))
-      set = await $.theme.set({ colors: look.colors })
-    }
-    // Clears a reason left from an earlier set once the theme draws.
-    $.ui.status(set.isDrawn ? undefined : set.reason)
+    await apply($)
     return next(e)
+  })
+
+  // A session can start before any app attaches; set the look again once one that draws it joins.
+  on('session.attach', async ($, e, next) => {
+    const result = await next(e)
+    if (e.surface === 'desktop' || e.surface === 'mobile') {
+      await apply($)
+    }
+    return result
   })
 }
