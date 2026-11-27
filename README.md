@@ -7,12 +7,14 @@ version for every theme, independent of mkit's.
 | Theme | Does |
 | --- | --- |
 | [`catppuccin`](catppuccin/README.md) | Catppuccin: Latte light; Frappé, Macchiato or Mocha dark; 14 accents. |
+| [`vscode`](vscode/README.md) | VS Code's default Light 2026 / Dark 2026. |
 
 ## Install
 
 ```
 /plugin marketplace add masterik/mk-toolkit
 /plugin install catppuccin@masterik
+/plugin install vscode@masterik
 ```
 
 The terminal draws no theme; the desktop and mobile apps do.
