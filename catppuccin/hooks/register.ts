@@ -129,6 +129,15 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  // A session can start before any app attaches; set the look again once one that draws it joins.
+  on('session.attach', async ($, e, next) => {
+    const result = await next(e)
+    if (e.surface === 'desktop' || e.surface === 'mobile') {
+      await apply($, await current($, fromOptions))
+    }
+    return result
+  })
+
   on('command.run', { command: 'catppuccin' }, async ($, e) => {
     const words = e.args.toLowerCase().split(/\s+/).filter(Boolean)
 
