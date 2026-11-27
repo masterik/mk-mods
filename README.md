@@ -1,4 +1,4 @@
-# mkit-themes
+# mk-mods
 
 Themes for the Claude Code desktop and mobile apps, as Claude Code mods. Each folder is one plugin,
 listed in the [mkit marketplace](https://github.com/masterik/mk-toolkit). The repo releases as one: one
