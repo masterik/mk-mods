@@ -4,7 +4,7 @@ import { makeColors } from './make-colors.js'
 import { ACCENTS, DARK_FLAVORS, FLAVORS, mix } from './palette'
 import type { Accent, DarkFlavor, Palette } from './palette'
 
-const [S1, S2, S3] = [0.5, 0.8, 0.9]
+const [S1, S2, S3] = [0, 0.8, 0.9]
 
 const LABELS: Record<DarkFlavor, string> = { frappe: 'Frappé', macchiato: 'Macchiato', mocha: 'Mocha' }
 
@@ -17,7 +17,8 @@ export function buildLook(flavor: DarkFlavor, accent: Accent): { look: ThemeSetA
     gray: {
       anchors: isDark
         ? {
-            // The conversation sits on `base`, as VS Code's editor does; panels and menus
+            // The conversation sits on `base`, as VS Code's editor does; the side panel and the
+            // composer strip (`surface-1`) sit on it too, so the chat column is one color; panels and menus
             // step up toward `surface0` so they read lighter than the chat.
             'surface-0': p.base,
             'surface-1': mix(p.base, p.surface0, S1),
