@@ -110,9 +110,8 @@ async function apply($: EngineInterface, choice: Choice): Promise<void> {
     $.ui.log(String(error))
     set = await $.theme.set({ colors: look.colors })
   }
-  if (!set.isDrawn) {
-    $.ui.status(set.reason)
-  }
+  // Clears a reason left from an earlier set once the theme draws.
+  $.ui.status(set.isDrawn ? undefined : set.reason)
 }
 
 export const register: Register = (on, options) => {
